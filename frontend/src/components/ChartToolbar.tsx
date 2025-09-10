@@ -56,7 +56,7 @@ export default function ChartToolbar({
   ];
 
   return (
-    <div className="col-span-full flex flex-col items-center gap-2 mb-2">
+    <div className="col-span-full flex flex-col items-center gap-4 mb-4">
       {/* Bid/Ask Selector and Timeframes */}
       <div className="flex flex-wrap items-center justify-center gap-4">
         {/* Bid/Ask Selector */}
@@ -109,7 +109,7 @@ export default function ChartToolbar({
 
       {/* Technical Indicators - Increased gap from controls above */}
       {(onToggleBollinger || onToggleDonchian || onToggleSupertrend || onToggleKeltner || onToggleDemas || onToggleVwap) && (
-        <div className="flex flex-wrap items-center justify-center gap-3 text-xs mt-8">
+        <div style={{ marginTop: 10 }} className="flex flex-wrap items-center justify-center gap-4 text-xs">
           {onToggleBollinger && (
             <label className="inline-flex items-center gap-2 cursor-pointer select-none">
               <input

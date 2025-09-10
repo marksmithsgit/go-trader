@@ -16,7 +16,7 @@ const getThemeColors = (isDarkMode: boolean) => ({
 });
 
 export default function PriceChart({ isDarkMode, instrument: instrumentProp = 'EURUSD' }: { isDarkMode: boolean; instrument?: string }) {
-  const { fullState, placeMarketOrder, placeLimitOrder, closeAll, requestHistoricalData, chartSettings, setChartSettings } = useStore();
+  const { fullState, placeMarketOrder, placeLimitOrder, closeAll, closePosition, requestHistoricalData, chartSettings, setChartSettings } = useStore();
   const themeColors = getThemeColors(isDarkMode);
   const instrument = instrumentProp;
   // const period = 'TEN_SECS';
@@ -36,6 +36,8 @@ export default function PriceChart({ isDarkMode, instrument: instrumentProp = 'E
   const prevBidRef = useRef<number | null>(null);
   // Risk model selection: FIXED (pips), ATR (x multiplier), PCT (% account risk)
   const [riskMode, setRiskMode] = useState<'FIXED' | 'ATR' | 'PCT'>('FIXED');
+  // Collapsible trading panels (Quick Trade + Advanced Order)
+  const [showTradingPanels, setShowTradingPanels] = useState<boolean>(false);
   const [atrMult, setAtrMult] = useState<string>('1.0');
   const [riskPct, setRiskPct] = useState<string>('1.0');
 
@@ -119,6 +121,8 @@ export default function PriceChart({ isDarkMode, instrument: instrumentProp = 'E
   // const availablePeriods = Object.keys(allBars);
   // const bars = fullState?.bars?.[instrument]?.[period] || [];
   const ticks = fullState?.ticks?.[instrument] || [];
+
+  const positions = fullState?.accountInfo?.positions || [];
 
   // Try to find bars with any period if TEN_SECS doesn't exist
   // let actualPeriod = period;
@@ -209,6 +213,22 @@ export default function PriceChart({ isDarkMode, instrument: instrumentProp = 'E
           showDemas={showDemas}
           showVwap={showVwap}
         />
+      </div>
+
+      {/* Toggle for Trading Panels */}
+      <div style={{ textAlign: 'center', marginBottom: '12px' }}>
+        <button
+          onClick={() => setShowTradingPanels(v => !v)}
+          style={{
+            padding: '8px 14px',
+            borderRadius: '8px',
+            border: `1px solid ${themeColors.border}`,
+            background: isDarkMode ? '#2a2a2a' : '#f3f4f6',
+            color: themeColors.text,
+            fontWeight: 600,
+            cursor: 'pointer'
+          }}
+        >{showTradingPanels ? 'Hide Trading Panels ▲' : 'Show Trading Panels ▼'}</button>
       </div>
 
       {/* Live Price Display - reduced height */}
@@ -340,7 +360,8 @@ export default function PriceChart({ isDarkMode, instrument: instrumentProp = 'E
         )}
       </div>
 
-      {/* Trading Interface */}
+      {/* Trading Interface (collapsible) */}
+      {showTradingPanels && (
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', marginBottom: '20px' }}>
 
         {/* Quick Trading Panel */}
@@ -834,8 +855,59 @@ export default function PriceChart({ isDarkMode, instrument: instrumentProp = 'E
           >
             Place Advanced Order
           </button>
+
+        {/* Open Positions Table (spans both columns) */}
+        <div style={{ gridColumn: '1 / -1', backgroundColor: themeColors.cardBackground, padding: '16px', borderRadius: '8px', border: `1px solid ${themeColors.border}`, boxShadow: isDarkMode ? '0 2px 8px rgba(0,0,0,0.3)' : '0 2px 8px rgba(0,0,0,0.1)' }}>
+          <h4 style={{ margin: '0 0 12px 0', color: themeColors.text, fontSize: '15px', fontWeight: 600 }}>📂 Open Positions</h4>
+          {positions.length === 0 ? (
+            <div style={{ color: themeColors.textSecondary, fontSize: '13px', textAlign: 'center', padding: '8px 0' }}>No open positions</div>
+          ) : (
+            <div style={{ overflowX: 'auto' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '12px' }}>
+                <thead>
+                  <tr style={{ textAlign: 'left', color: themeColors.textSecondary }}>
+                    <th style={{ padding: '8px' }}>Instrument</th>
+                    <th style={{ padding: '8px' }}>Side</th>
+                    <th style={{ padding: '8px' }}>Amount</th>
+                    <th style={{ padding: '8px' }}>Open Price</th>
+                    <th style={{ padding: '8px' }}>P/L</th>
+                    <th style={{ padding: '8px', textAlign: 'right' }}>Action</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {positions.map((p) => (
+                      <tr key={p.orderId} style={{ borderTop: `1px solid ${themeColors.border}` }}>
+                        <td style={{ padding: '8px', color: themeColors.text }}>{p.instrument}</td>
+                        <td style={{ padding: '8px', color: p.orderCommand === 'BUY' ? '#4CAF50' : '#f44336', fontWeight: 700 }}>{p.orderCommand}</td>
+                        <td style={{ padding: '8px', color: themeColors.text }}>{p.amount.toFixed(2)}</td>
+                        <td style={{ padding: '8px', color: themeColors.text }}>{p.openPrice?.toFixed(5) ?? '-'}</td>
+                        <td style={{ padding: '8px', color: (p.pnl || 0) >= 0 ? '#4CAF50' : '#f44336' }}>{(p.pnl ?? 0).toFixed(2)}</td>
+                        <td style={{ padding: '8px', textAlign: 'right' }}>
+                          <button
+                            style={{
+                              padding: '6px 10px',
+                              backgroundColor: '#FF6B35',
+                              color: 'black',
+                              border: '2px solid rgba(0,0,0,0.2)',
+                              borderRadius: '6px',
+                              cursor: 'pointer',
+                              fontSize: '11px',
+                              fontWeight: 'bold'
+                            }}
+                            onClick={() => closePosition({ orderId: p.orderId })}
+                          >Close</button>
+                        </td>
+                      </tr>
+                    ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+
         </div>
       </div>
+      )}
 
 
       {/* Strategy Panel */}

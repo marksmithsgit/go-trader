@@ -16,11 +16,11 @@ import (
 	"time"
 
 	"go-trader/internal/amqp"
+	"go-trader/internal/db"
 	"go-trader/internal/ledger"
 	"go-trader/internal/state"
 	"go-trader/internal/strategy"
 	"go-trader/internal/websocket"
-	"go-trader/internal/db"
 )
 
 // Configuration
@@ -40,38 +40,38 @@ const (
 
 // FullState represents a complete snapshot of the application state for broadcasting.
 type FullState struct {
-	AccountInfo       state.AccountInfo                           `json:"accountInfo"`
-	Ticks             map[string][]state.Tick                     `json:"ticks"`
-	Bars              map[string]map[string][]state.Bar           `json:"bars"`
-	HistoricalBars    map[string]map[string][]state.HistoricalBar `json:"historicalBars"`
-	StrategyStatuses  []strategy.Status                           `json:"strategyStatuses,omitempty"`
-	LedgerHealthSummary LedgerHealthSummary                        `json:"ledgerHealthSummary,omitempty"`
+	AccountInfo         state.AccountInfo                           `json:"accountInfo"`
+	Ticks               map[string][]state.Tick                     `json:"ticks"`
+	Bars                map[string]map[string][]state.Bar           `json:"bars"`
+	HistoricalBars      map[string]map[string][]state.HistoricalBar `json:"historicalBars"`
+	StrategyStatuses    []strategy.Status                           `json:"strategyStatuses,omitempty"`
+	LedgerHealthSummary LedgerHealthSummary                         `json:"ledgerHealthSummary,omitempty"`
 }
+
 // Ledger health summary types for quick dashboard validation
 // These provide lightweight counts and validity flags per instrument/period.
 type PeriodHealth struct {
-    Count    int   `json:"count"`
-    Valid    bool  `json:"valid"`
-    NewestTs int64 `json:"newestTs,omitempty"`
+	Count    int   `json:"count"`
+	Valid    bool  `json:"valid"`
+	NewestTs int64 `json:"newestTs,omitempty"`
 }
 
 type TicksHealth struct {
-    Count  int   `json:"count"`
-    Live   bool  `json:"live"`
-    LastTs int64 `json:"lastTs,omitempty"`
+	Count  int   `json:"count"`
+	Live   bool  `json:"live"`
+	LastTs int64 `json:"lastTs,omitempty"`
 }
 
 type InstrumentHealth struct {
-    Instrument string                 `json:"instrument"`
-    Ticks      TicksHealth            `json:"ticks"`
-    Periods    map[string]PeriodHealth `json:"periods"`
+	Instrument string                  `json:"instrument"`
+	Ticks      TicksHealth             `json:"ticks"`
+	Periods    map[string]PeriodHealth `json:"periods"`
 }
 
 type LedgerHealthSummary struct {
-    GeneratedAt int64               `json:"generatedAt"`
-    Instruments []InstrumentHealth  `json:"instruments"`
+	GeneratedAt int64              `json:"generatedAt"`
+	Instruments []InstrumentHealth `json:"instruments"`
 }
-
 
 // FrontendBroadcaster handles broadcasting state to frontend clients
 type FrontendBroadcaster struct {
@@ -80,9 +80,9 @@ type FrontendBroadcaster struct {
 	instrumentList []string
 	publisher      *amqp.Publisher
 	dbLogger       *db.Logger
-		stratEngine   *strategy.Engine
-
+	stratEngine    *strategy.Engine
 }
+
 // attachLedgerHealth computes a lightweight ledger summary for quick UI validation.
 func (fb *FrontendBroadcaster) attachLedgerHealth(full FullState) FullState {
 	// Define periods we expect to track (must match what JForex sends)
@@ -164,7 +164,6 @@ func (fb *FrontendBroadcaster) attachLedgerHealth(full FullState) FullState {
 	return full
 }
 
-
 func (fb *FrontendBroadcaster) Start() {
 	ticker := time.NewTicker(broadcastInterval)
 	defer ticker.Stop()
@@ -239,19 +238,20 @@ func (fb *FrontendBroadcaster) broadcastCurrentState() {
 func (fb *FrontendBroadcaster) processCommand(command []byte) {
 	// Unified command schema expected from frontend
 	type Req struct {
-		Type        string  `json:"type"`
-		Instrument  string  `json:"instrument"`
-		Side        string  `json:"side,omitempty"`      // BUY | SELL
-		Qty         float64 `json:"qty,omitempty"`       // JForex amount (e.g., 0.10 = 10k)
-		OrderType   string  `json:"orderType,omitempty"` // MARKET | LIMIT
-		Price       float64 `json:"price,omitempty"`     // For LIMIT
-		SlPips      float64 `json:"slPips,omitempty"`
-		TpPips      float64 `json:"tpPips,omitempty"`
-		Slippage    float64 `json:"slippage,omitempty"`
-		StrategyKey string  `json:"strategyKey,omitempty"`
-		Period      string  `json:"period,omitempty"`
-		AtrMult     float64                        `json:"atrMult,omitempty"`
-		Params      map[string]float64             `json:"params,omitempty"`
+		Type        string             `json:"type"`
+		Instrument  string             `json:"instrument"`
+		Side        string             `json:"side,omitempty"`      // BUY | SELL
+		Qty         float64            `json:"qty,omitempty"`       // JForex amount (e.g., 0.10 = 10k)
+		OrderType   string             `json:"orderType,omitempty"` // MARKET | LIMIT
+		Price       float64            `json:"price,omitempty"`     // For LIMIT
+		SlPips      float64            `json:"slPips,omitempty"`
+		TpPips      float64            `json:"tpPips,omitempty"`
+		Slippage    float64            `json:"slippage,omitempty"`
+		StrategyKey string             `json:"strategyKey,omitempty"`
+		Period      string             `json:"period,omitempty"`
+		AtrMult     float64            `json:"atrMult,omitempty"`
+		Params      map[string]float64 `json:"params,omitempty"`
+		OrderID     string             `json:"orderId,omitempty"`
 	}
 
 	var req Req
@@ -260,34 +260,52 @@ func (fb *FrontendBroadcaster) processCommand(command []byte) {
 		return
 	}
 
-
 	switch req.Type {
-		case "STRATEGY_START":
-			if req.Instrument == "" { log.Printf("Invalid STRATEGY_START: missing instrument"); return }
-			stratKey := strings.ToUpper(strings.TrimSpace(req.StrategyKey))
-			period := req.Period
-			if period == "" { period = "ONE_MIN" }
-			qty := req.Qty; if qty <= 0 { qty = 0.10 }
-			atrMult := req.AtrMult; if atrMult <= 0 { atrMult = 1.0 }
-			var strat strategy.Strategy
-			switch stratKey {
-			case "DEMA_RSI", "DEMA+RSI", "DEMA":
-				strat = &strategy.DemaRsiStrategy{}
-			case "BREAKOUT_DC":
-				strat = &strategy.DonchianBreakoutStrategy{}
-			case "SUPERTREND_TREND":
-				strat = &strategy.SupertrendStrategy{}
-			default:
-				strat = &strategy.DemaRsiStrategy{}
-			}
-			if fb.stratEngine != nil {
-				fb.stratEngine.StartStrategyWithParams(req.Instrument, period, strat, qty, atrMult, req.Params)
-			}
+	case "STRATEGY_START":
+		if req.Instrument == "" {
+			log.Printf("Invalid STRATEGY_START: missing instrument")
+			return
+		}
+		stratKey := strings.ToUpper(strings.TrimSpace(req.StrategyKey))
+		period := req.Period
+		if period == "" {
+			period = "ONE_MIN"
+		}
+		qty := req.Qty
+		if qty <= 0 {
+			qty = 0.10
+		}
+		atrMult := req.AtrMult
+		if atrMult <= 0 {
+			atrMult = 1.0
+		}
+		var strat strategy.Strategy
+		switch stratKey {
+		case "DEMA_RSI", "DEMA+RSI", "DEMA":
+			strat = &strategy.DemaRsiStrategy{}
+		case "BREAKOUT_DC":
+			strat = &strategy.DonchianBreakoutStrategy{}
+		case "SUPERTREND_TREND":
+			strat = &strategy.SupertrendStrategy{}
+		default:
+			strat = &strategy.DemaRsiStrategy{}
+		}
+		if fb.stratEngine != nil {
+			fb.stratEngine.StartStrategyWithParams(req.Instrument, period, strat, qty, atrMult, req.Params)
+		}
 
-		case "STRATEGY_STOP":
-			if req.Instrument == "" { log.Printf("Invalid STRATEGY_STOP: missing instrument"); return }
-			period := req.Period; if period == "" { period = "ONE_MIN" }
-			if fb.stratEngine != nil { fb.stratEngine.StopStrategy(req.Instrument, period) }
+	case "STRATEGY_STOP":
+		if req.Instrument == "" {
+			log.Printf("Invalid STRATEGY_STOP: missing instrument")
+			return
+		}
+		period := req.Period
+		if period == "" {
+			period = "ONE_MIN"
+		}
+		if fb.stratEngine != nil {
+			fb.stratEngine.StopStrategy(req.Instrument, period)
+		}
 
 	case "HISTORICAL_DATA_REQUEST":
 		log.Printf("🔄 Received historical data request for instrument: %s", req.Instrument)
@@ -303,7 +321,7 @@ func (fb *FrontendBroadcaster) processCommand(command []byte) {
 		ticks := fb.stateManager.GetTicks(req.Instrument)
 		if len(ticks) == 0 {
 			log.Printf("No ticks for instrument %s to place market order", req.Instrument)
-			return
+
 		}
 		last := ticks[len(ticks)-1]
 		entry := last.Ask
@@ -341,7 +359,7 @@ func (fb *FrontendBroadcaster) processCommand(command []byte) {
 			TakeProfitPrice: tp,
 		}
 		if fb.dbLogger != nil {
-			fb.dbLogger.LogTradeSubmitted(label, req.Instrument, req.Side, cmd.OrderCmd, req.Qty, cmd.Price, cmd.StopLossPrice, cmd.TakeProfitPrice, map[string]any{"orderType":"MARKET"})
+			fb.dbLogger.LogTradeSubmitted(label, req.Instrument, req.Side, cmd.OrderCmd, req.Qty, cmd.Price, cmd.StopLossPrice, cmd.TakeProfitPrice, map[string]any{"orderType": "MARKET"})
 		}
 		if err := fb.publisher.PublishSubmitOrder(cmd); err != nil {
 			log.Printf("Failed to publish market order: %v", err)
@@ -370,7 +388,9 @@ func (fb *FrontendBroadcaster) processCommand(command []byte) {
 		}
 		label := fmt.Sprintf("%s_%s_limit_%d", req.Instrument, strings.ToLower(req.Side), time.Now().UnixMilli())
 		orderCmd := "BUY_LIMIT"
-		if req.Side == "SELL" { orderCmd = "SELL_LIMIT" }
+		if req.Side == "SELL" {
+			orderCmd = "SELL_LIMIT"
+		}
 		cmd := amqp.TradeCommand{
 			Label:           label,
 			Instrument:      req.Instrument,
@@ -381,7 +401,7 @@ func (fb *FrontendBroadcaster) processCommand(command []byte) {
 			TakeProfitPrice: tp,
 		}
 		if fb.dbLogger != nil {
-			fb.dbLogger.LogTradeSubmitted(label, req.Instrument, req.Side, cmd.OrderCmd, req.Qty, cmd.Price, cmd.StopLossPrice, cmd.TakeProfitPrice, map[string]any{"orderType":"LIMIT"})
+			fb.dbLogger.LogTradeSubmitted(label, req.Instrument, req.Side, cmd.OrderCmd, req.Qty, cmd.Price, cmd.StopLossPrice, cmd.TakeProfitPrice, map[string]any{"orderType": "LIMIT"})
 		}
 		if err := fb.publisher.PublishSubmitOrder(cmd); err != nil {
 			log.Printf("Failed to publish limit order: %v", err)
@@ -402,12 +422,28 @@ func (fb *FrontendBroadcaster) processCommand(command []byte) {
 					continue
 				}
 				if fb.dbLogger != nil {
+
 					fb.dbLogger.LogTradeCloseRequested(pos.OrderID, pos.Instrument, pos.OrderCommand)
 				}
 				count++
 			}
 		}
 		log.Printf("Requested close for %d %s positions on %s", count, req.Side, req.Instrument)
+
+	case "CLOSE_ORDER":
+		// Close a specific order by OrderID
+		if strings.TrimSpace(req.OrderID) == "" {
+			log.Printf("Invalid CLOSE_ORDER request: missing orderId")
+			return
+		}
+		if err := fb.publisher.PublishCloseOrder(req.OrderID); err != nil {
+			log.Printf("Failed to publish close for %s: %v", req.OrderID, err)
+			return
+		}
+		if fb.dbLogger != nil {
+			fb.dbLogger.LogTradeCloseRequested(req.OrderID, req.Instrument, req.Side)
+		}
+		log.Printf("Requested close for orderId=%s", req.OrderID)
 
 	default:
 		log.Printf("Unknown command type: %s", req.Type)
@@ -525,35 +561,34 @@ func main() {
 	}
 	defer consumer.Close()
 
-		// --- 2b. Initialize DB Logger ---
-		dsn := "postgres://postgres:postgres@10.10.10.3:5432/gotrader?sslmode=disable"
-		dbLogger, err := db.NewLogger(dsn)
-		if err != nil {
-			log.Printf("⚠️ Failed to initialize DB logger: %v", err)
-		} else {
-			log.Println("✅ DB Logger initialized.")
-			defer dbLogger.Close()
-		}
+	// --- 2b. Initialize DB Logger ---
+	dsn := "postgres://postgres:postgres@10.10.10.3:5432/gotrader?sslmode=disable"
+	dbLogger, err := db.NewLogger(dsn)
+	if err != nil {
+		log.Printf("⚠️ Failed to initialize DB logger: %v", err)
+	} else {
+		log.Println("✅ DB Logger initialized.")
+		defer dbLogger.Close()
+	}
 
 	log.Println("✅ AMQP Consumer initialized.")
 
-		// Initialize Strategy Engine
-		stratEngine := strategy.NewEngine(stateManager, publisher, dbLogger)
+	// Initialize Strategy Engine
+	stratEngine := strategy.NewEngine(stateManager, publisher, dbLogger)
 
+	// 🧹 Drain queues BEFORE requesting/consuming historicals to avoid discarding fresh data
+	log.Println("🧹 Draining queues to clear backlog (pre-start)...")
+	if err := consumer.DrainQueues(drainDuration); err != nil {
+		log.Printf("⚠️ Warning: Failed to drain queues: %s", err)
+	}
+	log.Println("✅ Pre-start queue draining completed.")
 
-		// 🧹 Drain queues BEFORE requesting/consuming historicals to avoid discarding fresh data
-		log.Println("🧹 Draining queues to clear backlog (pre-start)...")
-		if err := consumer.DrainQueues(drainDuration); err != nil {
-			log.Printf("⚠️ Warning: Failed to drain queues: %s", err)
-		}
-		log.Println("✅ Pre-start queue draining completed.")
-
-		// --- 3. Start Live Consumers (now that queues are clean)
-		log.Println("📡 Starting live consumers...")
-		if err := consumer.StartConsumers(); err != nil {
-			log.Fatalf("❌ Failed to start consumers: %s", err)
-		}
-		log.Println("✅ Live consumers started. System is now ready to request historicals.")
+	// --- 3. Start Live Consumers (now that queues are clean)
+	log.Println("📡 Starting live consumers...")
+	if err := consumer.StartConsumers(); err != nil {
+		log.Fatalf("❌ Failed to start consumers: %s", err)
+	}
+	log.Println("✅ Live consumers started. System is now ready to request historicals.")
 
 	// --- 2. Initialize Central Ledger ---
 	centralLedger := ledger.NewCentralLedger(
@@ -598,77 +633,107 @@ func main() {
 		frontendBroadcaster.Start()
 	}()
 
+	// --- HTTP API for strategy runs/events ---
+	http.HandleFunc("/api/strategy/runs", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		if dbLogger == nil {
+			w.Write([]byte("[]"))
+			return
+		}
+		instrument := r.URL.Query().Get("instrument")
+		period := r.URL.Query().Get("period")
+		limit := 50
+		if v := r.URL.Query().Get("limit"); v != "" {
+			if n, err := strconv.Atoi(v); err == nil {
+				limit = n
+			}
+		}
+		ctx, cancel := context.WithTimeout(r.Context(), 2*time.Second)
+		defer cancel()
+		runs, err := dbLogger.QueryStrategyRuns(ctx, instrument, period, limit)
+		if err != nil {
+			w.WriteHeader(500)
+			w.Write([]byte(`{"error":"db"}`))
+			return
+		}
+		json.NewEncoder(w).Encode(runs)
+	})
+	http.HandleFunc("/api/strategy/events", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		if dbLogger == nil {
+			w.Write([]byte("[]"))
+			return
+		}
+		runID := r.URL.Query().Get("runId")
+		if runID == "" {
+			w.Write([]byte("[]"))
+			return
+		}
+		limit := 200
+		if v := r.URL.Query().Get("limit"); v != "" {
+			if n, err := strconv.Atoi(v); err == nil {
+				limit = n
+			}
+		}
+		ctx, cancel := context.WithTimeout(r.Context(), 2*time.Second)
+		defer cancel()
+		evts, err := dbLogger.QueryStrategyEvents(ctx, runID, limit)
+		if err != nil {
+			w.WriteHeader(500)
+			w.Write([]byte(`{"error":"db"}`))
+			return
+		}
+		json.NewEncoder(w).Encode(evts)
+	})
 
-		// --- HTTP API for strategy runs/events ---
-		http.HandleFunc("/api/strategy/runs", func(w http.ResponseWriter, r *http.Request) {
-			w.Header().Set("Content-Type", "application/json")
-			if dbLogger == nil { w.Write([]byte("[]")); return }
-			instrument := r.URL.Query().Get("instrument")
-			period := r.URL.Query().Get("period")
-			limit := 50
-			if v := r.URL.Query().Get("limit"); v != "" { if n, err := strconv.Atoi(v); err == nil { limit = n } }
-			ctx, cancel := context.WithTimeout(r.Context(), 2*time.Second); defer cancel()
-			runs, err := dbLogger.QueryStrategyRuns(ctx, instrument, period, limit)
-			if err != nil { w.WriteHeader(500); w.Write([]byte(`{"error":"db"}`)); return }
-			json.NewEncoder(w).Encode(runs)
-		})
-		http.HandleFunc("/api/strategy/events", func(w http.ResponseWriter, r *http.Request) {
-			w.Header().Set("Content-Type", "application/json")
-			if dbLogger == nil { w.Write([]byte("[]")); return }
-			runID := r.URL.Query().Get("runId")
-			if runID == "" { w.Write([]byte("[]")); return }
-			limit := 200
-			if v := r.URL.Query().Get("limit"); v != "" { if n, err := strconv.Atoi(v); err == nil { limit = n } }
-			ctx, cancel := context.WithTimeout(r.Context(), 2*time.Second); defer cancel()
-			evts, err := dbLogger.QueryStrategyEvents(ctx, runID, limit)
-			if err != nil { w.WriteHeader(500); w.Write([]byte(`{"error":"db"}`)); return }
-			json.NewEncoder(w).Encode(evts)
-		})
+	// --- HTTP API: Ledger counts (ticks/bars/historical per instrument/period)
+	http.HandleFunc("/api/ledger/counts", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		// Allow cross-origin for easy local debugging from Vite dev server
+		w.Header().Set("Access-Control-Allow-Origin", "*")
 
-            // --- HTTP API: Ledger counts (ticks/bars/historical per instrument/period)
-            http.HandleFunc("/api/ledger/counts", func(w http.ResponseWriter, r *http.Request) {
-                w.Header().Set("Content-Type", "application/json")
-                // Allow cross-origin for easy local debugging from Vite dev server
-                w.Header().Set("Access-Control-Allow-Origin", "*")
+		// Optional: instrument=EURUSD to scope; otherwise return all
+		instrument := r.URL.Query().Get("instrument")
 
-                // Optional: instrument=EURUSD to scope; otherwise return all
-                instrument := r.URL.Query().Get("instrument")
+		// Periods that our system handles
+		periods := []string{"TEN_SECS", "ONE_MIN", "FIVE_MINS", "FIFTEEN_MINS", "ONE_HOUR", "FOUR_HOURS", "DAILY"}
 
-                // Periods that our system handles
-                periods := []string{"TEN_SECS", "ONE_MIN", "FIVE_MINS", "FIFTEEN_MINS", "ONE_HOUR", "FOUR_HOURS", "DAILY"}
+		type counts struct {
+			// What: Lightweight counts per instrument for quick verification.
+			// How: Bars counts are sourced from the canonical historical buffer (completed bars only).
+			Ticks int            `json:"ticks"`
+			Bars  map[string]int `json:"bars"`
+		}
 
-                type counts struct {
-                    // What: Lightweight counts per instrument for quick verification.
-                    // How: Bars counts are sourced from the canonical historical buffer (completed bars only).
-                    Ticks int            `json:"ticks"`
-                    Bars  map[string]int `json:"bars"`
-                }
+		// Helper to compute counts for one instrument
+		compute := func(instr string) counts {
+			c := counts{Bars: map[string]int{}}
+			c.Ticks = len(stateManager.GetTicks(instr))
+			for _, p := range periods {
+				// Canonical completed bars: use historical bars store
+				c.Bars[p] = len(stateManager.GetHistoricalBars(instr, p))
+			}
+			return c
+		}
 
-                // Helper to compute counts for one instrument
-                compute := func(instr string) counts {
-                    c := counts{Bars: map[string]int{}}
-                    c.Ticks = len(stateManager.GetTicks(instr))
-                    for _, p := range periods {
-                        // Canonical completed bars: use historical bars store
-                        c.Bars[p] = len(stateManager.GetHistoricalBars(instr, p))
-                    }
-                    return c
-                }
+		enc := json.NewEncoder(w)
 
-                enc := json.NewEncoder(w)
+		if instrument != "" {
+			res := map[string]counts{instrument: compute(instrument)}
+			if err := enc.Encode(res); err != nil {
+				w.WriteHeader(500)
+			}
+			return
+		}
 
-                if instrument != "" {
-                    res := map[string]counts{instrument: compute(instrument)}
-                    if err := enc.Encode(res); err != nil { w.WriteHeader(500) }
-                    return
-                }
-
-                all := make(map[string]counts, len(instrumentList))
-                for _, instr := range instrumentList {
-                    all[instr] = compute(instr)
-                }
-                if err := enc.Encode(all); err != nil { w.WriteHeader(500) }
-            })
+		all := make(map[string]counts, len(instrumentList))
+		for _, instr := range instrumentList {
+			all[instr] = compute(instr)
+		}
+		if err := enc.Encode(all); err != nil {
+			w.WriteHeader(500)
+		}
+	})
 
 	// --- 5. Start WebSocket server with port conflict resolution ---
 	go func() {

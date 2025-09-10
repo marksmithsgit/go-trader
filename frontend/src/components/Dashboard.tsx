@@ -38,36 +38,14 @@ export default function Dashboard() {
           alignItems: 'center',
           marginBottom: '15px'
         }}>
-          {/* Left: Title and Theme Toggle */}
+          {/* Left: Title */}
           <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
             <h1 style={{
               margin: 0,
               color: '#4CAF50',
               fontFamily: 'Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
               fontWeight: '600'
-            }}>GoTrader</h1>
-            <button
-              onClick={() => setIsDarkMode(!isDarkMode)}
-              style={{
-                padding: '8px 12px',
-                backgroundColor: isDarkMode ? '#333' : '#e0e0e0',
-                color: isDarkMode ? 'white' : '#333',
-                border: '2px solid rgba(0,0,0,0.1)',
-                borderRadius: '6px',
-                cursor: 'pointer',
-                fontSize: '14px',
-                fontFamily: 'Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '5px',
-                boxShadow: '0 1px 3px rgba(0,0,0,0.2)',
-                transition: 'all 0.2s ease'
-              }}
-              onMouseOver={(e) => (e.target as HTMLElement).style.transform = 'translateY(-1px)'}
-              onMouseOut={(e) => (e.target as HTMLElement).style.transform = 'translateY(0)'}
-            >
-              {isDarkMode ? 'Light' : 'Dark'}
-            </button>
+            }}>Marks GoTrader</h1>
           </div>
 
           {/* Center: Account Info */}
@@ -140,6 +118,28 @@ export default function Dashboard() {
 
           {/* Right: Action Buttons */}
           <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end' }}>
+            {/* Dark/Light toggle moved here, styled like other buttons */}
+            <button
+              onClick={() => setIsDarkMode(!isDarkMode)}
+              style={{
+                padding: '8px 12px',
+                backgroundColor: isDarkMode ? '#ffffff' : '#333333',
+                color: isDarkMode ? '#333333' : '#ffffff',
+                border: '2px solid rgba(0,0,0,0.2)',
+                borderRadius: '6px',
+                cursor: 'pointer',
+                fontSize: '12px',
+                fontWeight: 'bold',
+                fontFamily: 'Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
+                boxShadow: isDarkMode ? '0 2px 4px rgba(0,0,0,0.2)' : '0 2px 4px rgba(0,0,0,0.5)',
+                transition: 'all 0.2s ease'
+              }}
+              onMouseOver={(e) => (e.target as HTMLElement).style.transform = 'translateY(-1px)'}
+              onMouseOut={(e) => (e.target as HTMLElement).style.transform = 'translateY(0)'}
+            >
+              {isDarkMode ? 'Light' : 'Dark'}
+            </button>
+
             <button
               style={{
                 padding: '8px 12px',
@@ -263,15 +263,13 @@ export default function Dashboard() {
 
 
 
-        {/* Market Data Display */}
+        {/* Main Content Area - allow page to scroll naturally (no inner scrollbars) */}
         <div style={{
-          height: '70vh',
           backgroundColor: isDarkMode ? '#1a1a1a' : '#ffffff',
-          borderRadius: '8px',
-          overflow: 'auto'
+          borderRadius: '8px'
         }}>
           {selectedInstrument === 'Dashboard' ? (
-            <div style={{ height: '100%', overflow: 'auto', padding: '12px' }}>
+            <div style={{ padding: '12px' }}>
               {fullState?.ledgerHealthSummary ? (
                 <div>
                   <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>

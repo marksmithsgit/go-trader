@@ -29,6 +29,8 @@ interface AppState {
   placeMarketOrder: (p: { instrument: string; side: 'BUY' | 'SELL'; qty: number; slPips?: number; tpPips?: number; slippage?: number }) => void;
   placeLimitOrder: (p: { instrument: string; side: 'BUY' | 'SELL'; qty: number; price: number; slPips?: number; tpPips?: number }) => void;
   closeAll: (p: { instrument: string; side: 'BUY' | 'SELL' }) => void;
+  closePosition: (p: { orderId: string }) => void;
+
   startStrategy: (p: { instrument: string; strategyKey: string; period: string; qty?: number; atrMult?: number; params?: Record<string, number> }) => void;
   stopStrategy: (p: { instrument: string; period: string }) => void;
   fetchStrategyRuns: (p: { instrument?: string; period?: string; limit?: number }) => Promise<any[]>;
@@ -138,6 +140,12 @@ export const useStore = create<AppState>((set, get) => ({
   closeAll: ({ instrument, side }) => {
     if (!websocket || websocket.readyState !== WebSocket.OPEN) return;
     const cmd = { type: 'CLOSE_ALL', instrument, side };
+    websocket.send(JSON.stringify(cmd));
+  },
+
+  closePosition: ({ orderId }) => {
+    if (!websocket || websocket.readyState !== WebSocket.OPEN) return;
+    const cmd = { type: 'CLOSE_ORDER', orderId };
     websocket.send(JSON.stringify(cmd));
   },
 

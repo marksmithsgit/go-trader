@@ -143,39 +143,34 @@ export default function StrategyPanel({
   const text = isDarkMode ? '#e2e8f0' : '#111827';
   return (
     <div className="rounded-xl shadow-lg p-6 bg-gradient-to-br from-gray-800 to-gray-900 border border-gray-700">
-      {/* Header with improved styling */}
+      {/* Header */}
       <div className="flex items-center justify-between mb-6">
-        <div className="flex items-center gap-3">
-          <div className="w-2 h-2 rounded-full bg-blue-400"></div>
-          <h3 className="text-lg font-bold text-white">Strategy Engine</h3>
+        <div>
+          <h3 className="text-xl font-semibold text-white">Strategy Engine</h3>
+          <p className="text-xs text-gray-400 mt-1">Configure, run and monitor strategies for <span className="text-gray-200 font-medium">{instrument}</span></p>
         </div>
         <div className="flex items-center gap-3">
-          <div className="text-sm font-medium text-gray-300 bg-gray-700 px-3 py-1 rounded-lg">
-            {instrument}
-          </div>
-          <span className={`text-xs px-3 py-1 rounded-full font-semibold border-2 ${
-            backendRunning
-              ? 'bg-green-500 border-green-400 text-white shadow-lg shadow-green-500/25'
-              : 'bg-gray-600 border-gray-500 text-gray-200'
-          }`}>
+          <span className="text-sm font-medium text-gray-200 bg-gray-700/70 px-3 py-1 rounded-lg border border-gray-600">{instrument}</span>
+          <span className={`text-xs px-3 py-1 rounded-full font-semibold border ${backendRunning ? 'bg-green-500/90 border-green-400 text-white' : 'bg-gray-600 border-gray-500 text-gray-200'}`}>
             {backendRunning ? '🟢 Running' : '⭕ Stopped'}
           </span>
         </div>
       </div>
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
 
-      {/* Strategy Configuration Section */}
-      <div className="bg-gray-800/50 rounded-lg p-4 mb-6">
-        <h4 className="text-sm font-semibold text-gray-200 mb-4 flex items-center gap-2">
-          <span className="w-1 h-4 bg-blue-400 rounded"></span>
-          Strategy Configuration
-        </h4>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+      {/* Strategy Configuration */}
+      <div className="lg:col-span-8 bg-gray-800/60 rounded-xl p-5 mb-6 border border-gray-700">
+        <div className="flex items-center justify-between mb-4">
+          <h4 className="text-xs uppercase tracking-wide text-gray-400">Strategy Configuration</h4>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
           {/* Strategy selector */}
           <div>
-            <label className="block text-xs font-medium text-gray-300 mb-2">Select Strategy</label>
+            <label className="block text-[11px] font-medium text-gray-300 mb-2">Select Strategy</label>
             <select
-              className="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-2.5 text-sm text-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
+              className="w-full bg-gray-700/70 border border-gray-600 rounded-lg px-3 py-2.5 text-sm text-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
               value={selectedStrategy}
               onChange={(e) => setSelectedStrategy(e.target.value)}
             >
@@ -186,10 +181,10 @@ export default function StrategyPanel({
           </div>
           {/* Strategy Bank (local) */}
           <div>
-            <label className="block text-xs font-medium text-gray-300 mb-2">Strategy Bank</label>
+            <label className="block text-[11px] font-medium text-gray-300 mb-2">Strategy Bank</label>
             <div className="flex items-center gap-2">
               <select
-                className="flex-1 bg-gray-700 border border-gray-600 rounded-lg px-3 py-2.5 text-sm text-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
+                className="flex-1 bg-gray-700/70 border border-gray-600 rounded-lg px-3 py-2.5 text-sm text-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
                 value={selectedBank}
                 onChange={(e) => {
                   const name = e.target.value; setSelectedBank(name);
@@ -221,12 +216,107 @@ export default function StrategyPanel({
               >Delete</button>
             </div>
           </div>
+      {/* Strategy Status & Information Panel (Right column, row 1) */}
+      <div className="lg:col-span-4 bg-gray-800/50 rounded-lg p-4">
+        <h4 className="text-sm font-semibold text-gray-200 mb-4 flex items-center gap-2">
+          <span className="w-1 h-4 bg-yellow-400 rounded"></span>
+          Strategy Status & Information
+        </h4>
+
+        <div className="grid grid-cols-1 md:grid-cols-1 gap-4">
+          {/* Current Status */}
+          <div className="bg-gray-700/50 rounded-lg p-3 border border-gray-600">
+            <h5 className="text-xs font-medium text-yellow-300 mb-2">Current Status</h5>
+            <div className="space-y-2 text-xs">
+              <div className="flex justify-between">
+                <span className="text-gray-400">Engine:</span>
+                <span className={backendRunning ? 'text-green-400' : 'text-red-400'}>
+                  {backendRunning ? '🟢 Running' : '🔴 Stopped'}
+                </span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-gray-400">Strategy:</span>
+                <span className="text-white">{strategies.find(s => s.key === selectedStrategy)?.name || 'None'}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-gray-400">Timeframe:</span>
+                <span className="text-white">{timeframes.find(t => t.key === period)?.label || 'None'}</span>
+              </div>
+              {backendStatus?.lastSignal && (
+                <div className="flex justify-between">
+                  <span className="text-gray-400">Last Signal:</span>
+                  <span className="text-blue-400">{backendStatus.lastSignal}</span>
+                </div>
+              )}
+              {backendStatus?.lastActionAt && (
+                <div className="flex justify-between">
+                  <span className="text-gray-400">Last Action:</span>
+                  <span className="text-gray-300">{new Date(backendStatus.lastActionAt).toLocaleTimeString()}</span>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Strategy Information */}
+          <div className="bg-gray-700/50 rounded-lg p-3 border border-gray-600">
+            <h5 className="text-xs font-medium text-blue-300 mb-2">Strategy Information</h5>
+            <div className="space-y-2 text-xs">
+              <div className="flex justify-between">
+                <span className="text-gray-400">Position Size:</span>
+                <span className="text-white">{qty} lots</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-gray-400">ATR Multiplier:</span>
+                <span className="text-white">{atrMult}x</span>
+              </div>
+              {selectedStrategy === 'BREAKOUT_DC' && (
+                <>
+                  <div className="flex justify-between">
+                    <span className="text-gray-400">DC Length:</span>
+                    <span className="text-white">{dcLen}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-400">Buffer:</span>
+                    <span className="text-white">{dcBuf}x ATR</span>
+                  </div>
+                </>
+              )}
+              {selectedStrategy === 'SUPERTREND_TREND' && (
+                <>
+                  <div className="flex justify-between">
+                    <span className="text-gray-400">ATR Length:</span>
+                    <span className="text-white">{stAtrLen}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-400">ST Multiplier:</span>
+                    <span className="text-white">{stMult}x</span>
+                  </div>
+                </>
+              )}
+            </div>
+          </div>
         </div>
 
+        {/* Status Message */}
+        <div className="mt-4 p-3 bg-gray-700/30 rounded-lg border border-gray-600">
+          <div className="text-xs text-gray-300">
+            <span className="font-medium">System Status:</span> {backendStatus ? (
+              <span className="text-gray-200">
+                Backend {backendRunning ? 'Running' : 'Stopped'}{backendStatus.lastSignal ? ` — Last: ${backendStatus.lastSignal}` : ''}
+                {backendStatus.lastActionAt ? ` @ ${new Date(backendStatus.lastActionAt).toLocaleTimeString()}` : ''}
+              </span>
+            ) : (
+              <span className="text-gray-400">{note}</span>
+            )}
+          </div>
+        </div>
+      </div>
+
+        </div>
       </div>
 
       {/* Timeframe and Parameters Section */}
-      <div className="bg-gray-800/50 rounded-lg p-4 mb-6">
+      <div className="lg:col-span-8 bg-gray-800/50 rounded-lg p-4 mb-6">
         <h4 className="text-sm font-semibold text-gray-200 mb-4 flex items-center gap-2">
           <span className="w-1 h-4 bg-green-400 rounded"></span>
           Execution Settings
@@ -354,40 +444,8 @@ export default function StrategyPanel({
       </div>
 
       {/* Control Buttons */}
-      <div className="bg-gray-800/50 rounded-lg p-4 mb-6">
-        <h4 className="text-sm font-semibold text-gray-200 mb-4 flex items-center gap-2">
-          <span className="w-1 h-4 bg-orange-400 rounded"></span>
-          Strategy Control
-        </h4>
-
-        <div className="flex items-center gap-4">
-          <button
-            onClick={handleStart}
-            disabled={backendRunning}
-            className={`flex-1 px-6 py-3 rounded-lg text-sm font-bold transition-all duration-200 shadow-lg ${
-              backendRunning
-                ? 'opacity-50 cursor-not-allowed bg-gray-600 text-gray-400'
-                : 'bg-green-600 hover:bg-green-700 text-white border-2 border-green-500 hover:border-green-400 transform hover:scale-105'
-            }`}
-          >
-            🚀 Start Strategy
-          </button>
-          <button
-            onClick={handleStop}
-            disabled={!backendRunning}
-            className={`flex-1 px-6 py-3 rounded-lg text-sm font-bold transition-all duration-200 shadow-lg ${
-              !backendRunning
-                ? 'opacity-50 cursor-not-allowed bg-gray-600 text-gray-400'
-                : 'bg-red-600 hover:bg-red-700 text-white border-2 border-red-500 hover:border-red-400 transform hover:scale-105'
-            }`}
-          >
-            ⛔ Stop Strategy
-          </button>
-        </div>
-      </div>
-
-      {/* Recent Runs */}
-      <div className="bg-gray-800/50 rounded-lg p-4">
+      {/* Recent Strategy Runs (Right column, row 2) */}
+      <div className="lg:col-span-4 bg-gray-800/50 rounded-lg p-4">
         <div className="flex items-center justify-between mb-4">
           <h4 className="text-sm font-semibold text-gray-200 flex items-center gap-2">
             <span className="w-1 h-4 bg-purple-400 rounded"></span>
@@ -432,101 +490,41 @@ export default function StrategyPanel({
         </div>
       </div>
 
-      {/* Strategy Status & Information Panel */}
-      <div className="bg-gray-800/50 rounded-lg p-4 mt-6">
+      <div className="lg:col-span-8 bg-gray-800/50 rounded-lg p-4 mb-6">
         <h4 className="text-sm font-semibold text-gray-200 mb-4 flex items-center gap-2">
-          <span className="w-1 h-4 bg-yellow-400 rounded"></span>
-          Strategy Status & Information
+          <span className="w-1 h-4 bg-orange-400 rounded"></span>
+          Strategy Control
         </h4>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {/* Current Status */}
-          <div className="bg-gray-700/50 rounded-lg p-3 border border-gray-600">
-            <h5 className="text-xs font-medium text-yellow-300 mb-2">Current Status</h5>
-            <div className="space-y-2 text-xs">
-              <div className="flex justify-between">
-                <span className="text-gray-400">Engine:</span>
-                <span className={backendRunning ? 'text-green-400' : 'text-red-400'}>
-                  {backendRunning ? '🟢 Running' : '🔴 Stopped'}
-                </span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-gray-400">Strategy:</span>
-                <span className="text-white">{strategies.find(s => s.key === selectedStrategy)?.name || 'None'}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-gray-400">Timeframe:</span>
-                <span className="text-white">{timeframes.find(t => t.key === period)?.label || 'None'}</span>
-              </div>
-              {backendStatus?.lastSignal && (
-                <div className="flex justify-between">
-                  <span className="text-gray-400">Last Signal:</span>
-                  <span className="text-blue-400">{backendStatus.lastSignal}</span>
-                </div>
-              )}
-              {backendStatus?.lastActionAt && (
-                <div className="flex justify-between">
-                  <span className="text-gray-400">Last Action:</span>
-                  <span className="text-gray-300">{new Date(backendStatus.lastActionAt).toLocaleTimeString()}</span>
-                </div>
-              )}
-            </div>
-          </div>
-
-          {/* Strategy Information */}
-          <div className="bg-gray-700/50 rounded-lg p-3 border border-gray-600">
-            <h5 className="text-xs font-medium text-blue-300 mb-2">Strategy Information</h5>
-            <div className="space-y-2 text-xs">
-              <div className="flex justify-between">
-                <span className="text-gray-400">Position Size:</span>
-                <span className="text-white">{qty} lots</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-gray-400">ATR Multiplier:</span>
-                <span className="text-white">{atrMult}x</span>
-              </div>
-              {selectedStrategy === 'BREAKOUT_DC' && (
-                <>
-                  <div className="flex justify-between">
-                    <span className="text-gray-400">DC Length:</span>
-                    <span className="text-white">{dcLen}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-400">Buffer:</span>
-                    <span className="text-white">{dcBuf}x ATR</span>
-                  </div>
-                </>
-              )}
-              {selectedStrategy === 'SUPERTREND_TREND' && (
-                <>
-                  <div className="flex justify-between">
-                    <span className="text-gray-400">ATR Length:</span>
-                    <span className="text-white">{stAtrLen}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-400">ST Multiplier:</span>
-                    <span className="text-white">{stMult}x</span>
-                  </div>
-                </>
-              )}
-            </div>
-          </div>
-        </div>
-
-        {/* Status Message */}
-        <div className="mt-4 p-3 bg-gray-700/30 rounded-lg border border-gray-600">
-          <div className="text-xs text-gray-300">
-            <span className="font-medium">System Status:</span> {backendStatus ? (
-              <span className="text-gray-200">
-                Backend {backendRunning ? 'Running' : 'Stopped'}{backendStatus.lastSignal ? ` — Last: ${backendStatus.lastSignal}` : ''}
-                {backendStatus.lastActionAt ? ` @ ${new Date(backendStatus.lastActionAt).toLocaleTimeString()}` : ''}
-              </span>
-            ) : (
-              <span className="text-gray-400">{note}</span>
-            )}
-          </div>
+        <div className="flex items-center gap-4">
+          <button
+            onClick={handleStart}
+            disabled={backendRunning}
+            className={`flex-1 px-6 py-3 rounded-lg text-sm font-bold transition-all duration-200 shadow-lg ${
+              backendRunning
+                ? 'opacity-50 cursor-not-allowed bg-gray-600 text-gray-400'
+                : 'bg-green-600 hover:bg-green-700 text-white border-2 border-green-500 hover:border-green-400 transform hover:scale-105'
+            }`}
+          >
+            🚀 Start Strategy
+          </button>
+          <button
+            onClick={handleStop}
+            disabled={!backendRunning}
+            className={`flex-1 px-6 py-3 rounded-lg text-sm font-bold transition-all duration-200 shadow-lg ${
+              !backendRunning
+                ? 'opacity-50 cursor-not-allowed bg-gray-600 text-gray-400'
+                : 'bg-red-600 hover:bg-red-700 text-white border-2 border-red-500 hover:border-red-400 transform hover:scale-105'
+            }`}
+          >
+            ⛔ Stop Strategy
+          </button>
         </div>
       </div>
+      </div>
+
+
+
 
       <StrategyRunDrawer open={showDrawer} instrument={instrument} period={period} onClose={() => setShowDrawer(false)} />
 
