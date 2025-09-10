@@ -1,4 +1,3 @@
-
 package state
 
 // Tick represents a single price change in the market.
@@ -60,10 +59,14 @@ type Bar struct {
 	Period            string    `json:"period"`
 	Bid               OHLCV     `json:"bid"`
 	Ask               OHLCV     `json:"ask"`
-	Vwap              Vwap      `json:"vwap"`
-	Emas              Emas      `json:"emas"`
-	Donchian          Donchian  `json:"donchian"`
-	Bollinger         Bollinger `json:"bollinger"`
+	BidVwap           Vwap      `json:"bid_vwap"`
+	AskVwap           Vwap      `json:"ask_vwap"`
+	BidEmas           Emas      `json:"bid_emas"`
+	AskEmas           Emas      `json:"ask_emas"`
+	BidDonchian       Donchian  `json:"bid_donchian"`
+	AskDonchian       Donchian  `json:"ask_donchian"`
+	BidBollinger      Bollinger `json:"bid_bollinger"`
+	AskBollinger      Bollinger `json:"ask_bollinger"`
 }
 
 // Demas contains the double exponential moving averages.
@@ -116,19 +119,33 @@ type HistoricalBar struct {
 	Period            string     `json:"period"`
 	Bid               OHLCV      `json:"bid"`
 	Ask               OHLCV      `json:"ask"`
-	Vwap              Vwap       `json:"vwap"` // TickVwap will be null
-	Atr               float64    `json:"atr"`
-	Obv               float64    `json:"obv"`
-	Demas             Demas      `json:"demas"`
-	Macd              Macd       `json:"macd"`
-	Rsi               Rsi        `json:"rsi"`
-	Stoch             Stoch      `json:"stoch"`
-	Cci               float64    `json:"cci"`
-	Mfi               float64    `json:"mfi"`
-	Bollinger         Bollinger  `json:"bollinger"`
-	Keltner           Keltner    `json:"keltner"`
-	Donchian          Donchian   `json:"donchian"`
-	Supertrend        Supertrend `json:"supertrend"`
+	BidVwap           Vwap       `json:"bid_vwap"` // TickVwap will be null
+	AskVwap           Vwap       `json:"ask_vwap"` // TickVwap will be null
+	BidAtr            float64    `json:"bid_atr"`
+	AskAtr            float64    `json:"ask_atr"`
+	BidObv            float64    `json:"bid_obv"`
+	AskObv            float64    `json:"ask_obv"`
+	BidDemas          Demas      `json:"bid_demas"`
+	AskDemas          Demas      `json:"ask_demas"`
+	BidMacd           Macd       `json:"bid_macd"`
+	AskMacd           Macd       `json:"ask_macd"`
+	BidRsi            Rsi        `json:"bid_rsi"`
+	AskRsi            Rsi        `json:"ask_rsi"`
+	BidStoch          Stoch      `json:"bid_stoch"`
+	AskStoch          Stoch      `json:"ask_stoch"`
+	BidCci            float64    `json:"bid_cci"`
+	AskCci            float64    `json:"ask_cci"`
+	BidMfi            float64    `json:"bid_mfi"`
+	AskMfi            float64    `json:"ask_mfi"`
+	BidBollinger      Bollinger  `json:"bid_bollinger"`
+	AskBollinger      Bollinger  `json:"ask_bollinger"`
+	BidKeltner        Keltner    `json:"bid_keltner"`
+	AskKeltner        Keltner    `json:"ask_keltner"`
+	BidDonchian       Donchian   `json:"bid_donchian"`
+	AskDonchian       Donchian   `json:"ask_donchian"`
+	BidSupertrend     Supertrend `json:"bid_supertrend"`
+	AskSupertrend     Supertrend `json:"ask_supertrend"`
+	Sequence          int        `json:"sequence"`
 }
 
 // Account represents the overall state of the trading account.

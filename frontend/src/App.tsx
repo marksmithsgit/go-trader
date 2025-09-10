@@ -47,8 +47,5 @@ function App() {
   return <Dashboard />;
 }
 
-function DashboardComponent() {
-  return <Dashboard />;
-}
 
 export default App;

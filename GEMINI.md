@@ -104,6 +104,6 @@ The following features are planned for the next version of the application, whic
 Account-Info
 H-Bars
 H-Requests
-Market_Data_Bars_EURUSD (each of the other 9 currency pairs will have their own bar queue e.b. Market_Data_bars_GBPUSD)
+EURUSD_Market_Data_Bars (each of the other 9 currency pairs will have their own bar queue e.b. GBPUSD_Market_Data_Bars)
 Market_Data_Ticks
 Trade_Commands

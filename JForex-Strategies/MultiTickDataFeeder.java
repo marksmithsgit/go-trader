@@ -61,23 +61,20 @@ public class MultiTickDataFeeder implements IStrategy {
     // --- Automatically create a Set for fast filtering ---
     private static final Set<Instrument> INSTRUMENT_SET = new HashSet<>(INSTRUMENTS_TO_PROCESS);
 
-    // --- Automatically map instruments to their unique IDs ---
+    // --- Map instruments to their pair IDs (consistent with bar data strategies) ---
     private static final Map<Instrument, Integer> INSTRUMENT_PAIR_IDS = new HashMap<>();
     static {
-        int id = 1;
-        // A common mapping order for majors
-        Map<Instrument, Integer> pairs = new LinkedHashMap<>();
-        pairs.put(Instrument.EURUSD, 1);
-        pairs.put(Instrument.GBPUSD, 2);
-        pairs.put(Instrument.USDJPY, 3);
-        pairs.put(Instrument.USDCHF, 4);
-        pairs.put(Instrument.AUDUSD, 5);
-        pairs.put(Instrument.USDCAD, 6);
-        pairs.put(Instrument.NZDUSD, 7);
-        pairs.put(Instrument.EURJPY, 8);
-        pairs.put(Instrument.GBPJPY, 9);
-        pairs.put(Instrument.EURGBP, 10);
-        INSTRUMENT_PAIR_IDS.putAll(pairs);
+        // Pair ID mapping consistent with StandingData.md and bar data strategies
+        INSTRUMENT_PAIR_IDS.put(Instrument.EURUSD, 1);
+        INSTRUMENT_PAIR_IDS.put(Instrument.USDJPY, 2);
+        INSTRUMENT_PAIR_IDS.put(Instrument.GBPUSD, 3);
+        INSTRUMENT_PAIR_IDS.put(Instrument.USDCHF, 4);
+        INSTRUMENT_PAIR_IDS.put(Instrument.AUDUSD, 5);
+        INSTRUMENT_PAIR_IDS.put(Instrument.USDCAD, 6);
+        INSTRUMENT_PAIR_IDS.put(Instrument.NZDUSD, 7);
+        INSTRUMENT_PAIR_IDS.put(Instrument.EURJPY, 8);
+        INSTRUMENT_PAIR_IDS.put(Instrument.GBPJPY, 9);
+        INSTRUMENT_PAIR_IDS.put(Instrument.EURGBP, 10);
     }
 
     // =============================================================================================================
@@ -176,10 +173,17 @@ public class MultiTickDataFeeder implements IStrategy {
     private void sendMessage(String message) throws IOException {
         synchronized (amqpConnectionLock) {
             if (amqpChannel == null || !amqpChannel.isOpen()) {
-                return; // Fail silently to avoid log spam
+                console.getErr().println("WARNING: Cannot send tick message - AMQP channel is not available");
+                return;
             }
-            amqpChannel.basicPublish("", AMQP_QUEUE_NAME, null, message.getBytes(StandardCharsets.UTF_8));
-            ticksSent.incrementAndGet();
+
+            try {
+                amqpChannel.basicPublish("", AMQP_QUEUE_NAME, null, message.getBytes(StandardCharsets.UTF_8));
+                ticksSent.incrementAndGet();
+            } catch (IOException e) {
+                console.getErr().println("ERROR: Failed to send tick message to queue '" + AMQP_QUEUE_NAME + "': " + e.getMessage());
+                throw e; // Re-throw to allow calling code to handle the error
+            }
         }
     }
 

@@ -1,7 +1,6 @@
 package amqp
 
 import (
-	"encoding/json"
 	"fmt"
 	"log"
 	"strings"
@@ -15,23 +14,16 @@ import (
 const (
 	staleMessageThreshold = 3 * time.Second
 	ticksQueue            = "Market_Data_Ticks"
-	historicalBarsQueue   = "H-Bars"
-	accountInfoQueue      = "Account_Info"
+
+	accountInfoQueue = "Account_Info"
 )
 
-// A list of all instruments the system trades.
-// This will be used to dynamically create queue consumers for each instrument's bar data.
-// Temporarily disabled most queues except EURUSD for testing
-var instrumentList = []string{
-	"EURUSD", // Only EURUSD enabled for now
-	// "GBPUSD", "USDJPY", "USDCHF", "AUDUSD",
-	// "USDCAD", "NZDUSD", "EURJPY", "GBPJPY", "EURGBP",
-}
+// Note: instrumentList is declared in publisher.go to avoid duplication
 
 // Consumer handles receiving messages from RabbitMQ.
 type Consumer struct {
-	conn         *amqp091.Connection
-	stateManager *state.StateManager
+	conn           *amqp091.Connection
+	messageHandler *MessageHandler
 }
 
 // NewConsumer creates and connects a new Consumer.
@@ -51,7 +43,10 @@ func NewConsumer(amqpURI string, sm *state.StateManager) (*Consumer, error) {
 		return nil, fmt.Errorf("failed to connect to RabbitMQ after 10 attempts: %w", err)
 	}
 
-	return &Consumer{conn: conn, stateManager: sm}, nil
+	messageHandler := NewMessageHandler(sm)
+	messageHandler.Start()
+
+	return &Consumer{conn: conn, messageHandler: messageHandler}, nil
 }
 
 // StartConsumers starts a goroutine for each queue to begin consuming messages.
@@ -77,7 +72,7 @@ func (c *Consumer) StartConsumers() error {
 			msgs, err = ch.Consume(
 				queueName,
 				"",    // consumer
-				true,  // auto-ack
+				false, // auto-ack (manual acks in processors)
 				false, // exclusive
 				false, // no-local
 				false, // no-wait
@@ -126,14 +121,19 @@ func (c *Consumer) StartConsumers() error {
 
 	// Start consumers for all queues
 	handleFunc(ticksQueue, c.tickHandler)
-	handleFunc(historicalBarsQueue, c.historicalBarHandler)
 	handleFunc(accountInfoQueue, c.accountInfoHandler)
 
 	// Start a consumer for each instrument's live bar queue
 	// Note: Some queues may not exist yet, which is fine - we'll skip them
 	for _, instrument := range instrumentList {
-		barQueueName := fmt.Sprintf("Market_Data_Bars_%s", instrument)
+		barQueueName := fmt.Sprintf("%s_Market_Data_Bars", instrument)
 		handleFunc(barQueueName, c.barHandler)
+	}
+
+	// Start a consumer for each instrument's historical bar queue
+	for _, instrument := range instrumentList {
+		historicalBarQueueName := fmt.Sprintf("%s_H-Bars", instrument)
+		handleFunc(historicalBarQueueName, c.historicalBarHandler)
 	}
 
 	return nil
@@ -145,66 +145,23 @@ func isStale(producedAt int64) bool {
 }
 
 func (c *Consumer) tickHandler(d amqp091.Delivery) {
-	var tick state.Tick
-	if err := json.Unmarshal(d.Body, &tick); err != nil {
-		log.Printf("Error unmarshalling tick: %s", err)
-		return
-	}
-
-	if isStale(tick.ProducedAt) {
-		// log.Printf("Discarding stale tick for %s", tick.Instrument)
-		return
-	}
-
-	c.stateManager.UpdateTick(tick)
+	// Pass tick messages to the dedicated tick processor
+	c.messageHandler.EnqueueTick(d)
 }
 
 func (c *Consumer) barHandler(d amqp091.Delivery) {
-	var bar state.Bar
-	if err := json.Unmarshal(d.Body, &bar); err != nil {
-		log.Printf("Error unmarshalling bar: %s", err)
-		return
-	}
-
-	if isStale(bar.ProducedAt) {
-		// log.Printf("Discarding stale bar for %s", bar.Instrument)
-		return
-	}
-
-	log.Printf("DEBUG: Received bar for %s, period: %s", bar.Instrument, bar.Period)
-	c.stateManager.UpdateBar(bar)
+	// Pass bar messages to the dedicated bar processors
+	c.messageHandler.EnqueueBar(d)
 }
 
 func (c *Consumer) historicalBarHandler(d amqp091.Delivery) {
-	var bar state.HistoricalBar
-	if err := json.Unmarshal(d.Body, &bar); err != nil {
-		log.Printf("Error unmarshalling historical bar: %s", err)
-		return
-	}
-
-	if isStale(bar.ProducedAt) {
-		log.Printf("DEBUG: Discarding stale historical bar for %s, period: %s", bar.Instrument, bar.Period)
-		return
-	}
-
-	log.Printf("DEBUG: Received historical bar for %s, period: %s", bar.Instrument, bar.Period)
-	c.stateManager.UpdateHistoricalBar(bar)
+	// Pass historical bar messages to the dedicated historical processors
+	c.messageHandler.EnqueueHistorical(d)
 }
 
 func (c *Consumer) accountInfoHandler(d amqp091.Delivery) {
-	var info state.AccountInfo
-	if err := json.Unmarshal(d.Body, &info); err != nil {
-		log.Printf("Error unmarshalling account info: %s", err)
-		return
-	}
-
-	if isStale(info.ProducedAt) {
-		// log.Printf("Discarding stale account info")
-		return
-	}
-
-	log.Printf("DEBUG: Received account info - Balance: %.2f, Equity: %.2f", info.Account.Balance, info.Account.Equity)
-	c.stateManager.UpdateAccountInfo(info)
+	// Pass account info messages to the dedicated account processor
+	c.messageHandler.EnqueueAccount(d)
 }
 
 // DrainQueues consumes and discards all messages currently in the queues.
@@ -216,9 +173,10 @@ func (c *Consumer) DrainQueues(duration time.Duration) error {
 	}
 	defer ch.Close()
 
-	queuesToDrain := []string{ticksQueue, historicalBarsQueue, accountInfoQueue}
+	queuesToDrain := []string{ticksQueue, accountInfoQueue}
 	for _, instrument := range instrumentList {
-		queuesToDrain = append(queuesToDrain, fmt.Sprintf("Market_Data_Bars_%s", instrument))
+		queuesToDrain = append(queuesToDrain, fmt.Sprintf("%s_Market_Data_Bars", instrument))
+		queuesToDrain = append(queuesToDrain, fmt.Sprintf("%s_H-Bars", instrument))
 	}
 
 	log.Printf("Draining %d queues for up to %s...", len(queuesToDrain), duration)
@@ -258,8 +216,16 @@ func (c *Consumer) DrainQueues(duration time.Duration) error {
 	return nil
 }
 
-// Close closes the consumer's connection.
+// GetMessageHandler returns the message handler for external access
+func (c *Consumer) GetMessageHandler() *MessageHandler {
+	return c.messageHandler
+}
+
+// Close closes the consumer's connection and message handler.
 func (c *Consumer) Close() {
+	if c.messageHandler != nil {
+		c.messageHandler.Stop()
+	}
 	if c.conn != nil {
 		c.conn.Close()
 	}

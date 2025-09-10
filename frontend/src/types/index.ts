@@ -83,24 +83,40 @@ export interface HistoricalBar {
   produced_at: number;
   bar_start_timestamp: number;
   bar_end_timestamp: number;
+  sequence?: number;
   pairId: number;
   instrument: string;
   period: string;
   bid: OHLCV;
   ask: OHLCV;
-  vwap: Vwap;
-  atr: number;
-  obv: number;
-  demas: Demas;
-  macd: Macd;
-  rsi: Rsi;
-  stoch: Stoch;
-  cci: number;
-  mfi: number;
-  bollinger: Bollinger;
-  keltner: Keltner;
-  donchian: Donchian;
-  supertrend: Supertrend;
+  // Bid-side indicators
+  bid_vwap?: Vwap | null;
+  bid_atr?: number;
+  bid_obv?: number;
+  bid_demas?: Demas;
+  bid_macd?: Macd;
+  bid_rsi?: Rsi;
+  bid_stoch?: Stoch;
+  bid_cci?: number;
+  bid_mfi?: number;
+  bid_bollinger?: Bollinger;
+  bid_keltner?: Keltner;
+  bid_donchian?: Donchian;
+  bid_supertrend?: Supertrend;
+  // Ask-side indicators
+  ask_vwap?: Vwap | null;
+  ask_atr?: number;
+  ask_obv?: number;
+  ask_demas?: Demas;
+  ask_macd?: Macd;
+  ask_rsi?: Rsi;
+  ask_stoch?: Stoch;
+  ask_cci?: number;
+  ask_mfi?: number;
+  ask_bollinger?: Bollinger;
+  ask_keltner?: Keltner;
+  ask_donchian?: Donchian;
+  ask_supertrend?: Supertrend;
 }
 
 export interface Tick {
@@ -146,9 +162,68 @@ export interface AccountInfo {
   positions: Position[];
 }
 
+export interface StrategyStatus {
+  instrument: string;
+  period: string;
+  key: string;
+  running: boolean;
+  lastSignal: 'BUY' | 'SELL' | 'NONE' | string;
+  lastActionAt: number; // ms epoch
+}
+
+export interface PeriodHealth {
+  count: number;
+  valid: boolean;
+  newestTs?: number;
+}
+
+export interface TicksHealth {
+  count: number;
+  live: boolean;
+  lastTs?: number;
+}
+
+export interface InstrumentHealthSummary {
+  instrument: string;
+  ticks: TicksHealth;
+  periods: Record<string, PeriodHealth>;
+}
+
+export interface LedgerHealthSummary {
+  generatedAt: number;
+  instruments: InstrumentHealthSummary[];
+}
+
 export interface FullState {
   accountInfo: AccountInfo;
   ticks: Record<string, Tick[]>;
   bars: Record<string, Record<string, Bar[]>>;
   historicalBars: Record<string, Record<string, HistoricalBar[]>>;
+  strategyStatuses?: StrategyStatus[];
+  ledgerHealthSummary?: LedgerHealthSummary;
+}
+
+
+export interface StrategyRunRow {
+  runId: string;
+  startedAt: string; // ISO
+  stoppedAt?: string;
+  instrument: string;
+  period: string;
+  strategyKey: string;
+  qty: number;
+  atrMult: number;
+  params: Record<string, number>;
+  status: string;
+}
+
+export interface StrategyEventRow {
+  runId: string;
+  ts: string; // ISO
+  instrument: string;
+  period: string;
+  strategyKey: string;
+  eventType: string; // signal|order_submitted|...
+  signal?: string;
+  details?: Record<string, any>;
 }

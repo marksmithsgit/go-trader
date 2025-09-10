@@ -1,8 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useStore } from '../store/store';
-import AccountInfo from './AccountInfo';
 import PriceChart from './PriceChart';
-import PositionsTable from './PositionsTable';
 
 export default function Dashboard() {
   const { fullState, requestHistoricalData } = useStore();
@@ -65,8 +63,8 @@ export default function Dashboard() {
                 boxShadow: '0 1px 3px rgba(0,0,0,0.2)',
                 transition: 'all 0.2s ease'
               }}
-              onMouseOver={(e) => e.target.style.transform = 'translateY(-1px)'}
-              onMouseOut={(e) => e.target.style.transform = 'translateY(0)'}
+              onMouseOver={(e) => (e.target as HTMLElement).style.transform = 'translateY(-1px)'}
+              onMouseOut={(e) => (e.target as HTMLElement).style.transform = 'translateY(0)'}
             >
               {isDarkMode ? 'Light' : 'Dark'}
             </button>
@@ -156,8 +154,8 @@ export default function Dashboard() {
                 boxShadow: '0 2px 4px rgba(255, 152, 0, 0.3)',
                 transition: 'all 0.2s ease'
               }}
-              onMouseOver={(e) => e.target.style.transform = 'translateY(-1px)'}
-              onMouseOut={(e) => e.target.style.transform = 'translateY(0)'}
+              onMouseOver={(e) => (e.target as HTMLElement).style.transform = 'translateY(-1px)'}
+              onMouseOut={(e) => (e.target as HTMLElement).style.transform = 'translateY(0)'}
               onClick={() => requestHistoricalData(selectedInstrument)}
             >
               Request H Data
@@ -176,8 +174,8 @@ export default function Dashboard() {
                 boxShadow: '0 2px 4px rgba(244, 67, 54, 0.3)',
                 transition: 'all 0.2s ease'
               }}
-              onMouseOver={(e) => e.target.style.transform = 'translateY(-1px)'}
-              onMouseOut={(e) => e.target.style.transform = 'translateY(0)'}
+              onMouseOver={(e) => (e.target as HTMLElement).style.transform = 'translateY(-1px)'}
+              onMouseOut={(e) => (e.target as HTMLElement).style.transform = 'translateY(0)'}
               onClick={() => {
                 if (window.confirm('EMERGENCY STOP: This will close all positions and stop all trading strategies. Are you sure?')) {
                   console.log('Emergency Stop Activated');
@@ -241,11 +239,7 @@ export default function Dashboard() {
               <button
                 key={instrument}
                 onClick={() => {
-                  if (instrument === 'EURUSD' || instrument === 'Dashboard') {
-                    setSelectedInstrument(instrument);
-                  } else {
-                    setSelectedInstrument(''); // Blank page for other instruments
-                  }
+                  setSelectedInstrument(instrument);
                 }}
                 style={{
                   padding: '8px 16px',
@@ -253,11 +247,11 @@ export default function Dashboard() {
                   color: 'white',
                   border: selectedInstrument === instrument ? '2px solid rgba(255,255,255,0.3)' : '2px solid rgba(255,255,255,0.1)',
                   borderRadius: '8px',
-                  cursor: (instrument === 'EURUSD' || instrument === 'Dashboard') ? 'pointer' : 'not-allowed',
+                  cursor: 'pointer',
                   fontSize: '14px',
                   fontWeight: selectedInstrument === instrument ? 'bold' : 'normal',
                   transition: 'all 0.2s',
-                  opacity: (instrument === 'EURUSD' || instrument === 'Dashboard') ? 1 : 0.6,
+                  opacity: 1,
                   boxShadow: selectedInstrument === instrument ? '0 2px 6px rgba(76, 175, 80, 0.4)' : '0 1px 3px rgba(0,0,0,0.2)'
                 }}
               >
@@ -267,118 +261,83 @@ export default function Dashboard() {
           </div>
         </div>
 
-        {/* Data Availability Indicators - Only show for EURUSD */}
-        {selectedInstrument === 'EURUSD' && (
-          <div style={{
-            display: 'flex',
-            justifyContent: 'center',
-            alignItems: 'center',
-            gap: '20px',
-            marginBottom: '10px',
-            padding: '8px 0',
-            fontSize: '14px',
-            fontFamily: 'Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
-            fontWeight: '500'
-          }}>
-            <span style={{ color: isDarkMode ? '#00FF00' : '#4CAF50', fontWeight: 'bold', fontSize: '12px' }}>Ticks</span>
-            <span style={{ color: isDarkMode ? '#00FF00' : '#4CAF50', fontWeight: 'bold', fontSize: '12px' }}>10s</span>
-            <span style={{ color: isDarkMode ? '#00FF00' : '#4CAF50', fontWeight: 'bold', fontSize: '12px' }}>1m</span>
-            <span style={{ color: isDarkMode ? '#00FF00' : '#4CAF50', fontWeight: 'bold', fontSize: '12px' }}>5m</span>
-            <span style={{ color: isDarkMode ? '#00FF00' : '#4CAF50', fontWeight: 'bold', fontSize: '12px' }}>15m</span>
-            <span style={{ color: isDarkMode ? '#00FF00' : '#4CAF50', fontWeight: 'bold', fontSize: '12px' }}>1h</span>
-            <span style={{ color: isDarkMode ? '#00FF00' : '#4CAF50', fontWeight: 'bold', fontSize: '12px' }}>4h</span>
-            <span style={{ color: isDarkMode ? '#00FF00' : '#4CAF50', fontWeight: 'bold', fontSize: '12px' }}>1d</span>
-          </div>
-        )}
+
 
         {/* Market Data Display */}
         <div style={{
-          height: '60vh',
+          height: '70vh',
           backgroundColor: isDarkMode ? '#1a1a1a' : '#ffffff',
           borderRadius: '8px',
-          overflow: 'hidden'
+          overflow: 'auto'
         }}>
           {selectedInstrument === 'Dashboard' ? (
-            <div style={{
-              height: '100%',
-              display: 'flex',
-              flexDirection: 'column',
-              alignItems: 'center',
-              justifyContent: 'center',
-              color: isDarkMode ? '#666' : '#999',
-              fontSize: '18px',
-              fontFamily: 'Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
-            }}>
-              <div style={{ fontSize: '48px', marginBottom: '20px' }}>📊</div>
-              <div style={{ textAlign: 'center' }}>
-                <div style={{ fontSize: '24px', marginBottom: '10px' }}>Trading Dashboard</div>
-                <div>Welcome to GoTrader</div>
-                <div style={{ marginTop: '10px', fontSize: '16px' }}>Select a currency pair to start trading</div>
-              </div>
-            </div>
-          ) : selectedInstrument === 'EURUSD' ? (
-            <PriceChart isDarkMode={isDarkMode} />
-          ) : selectedInstrument === '' ? (
-            <div style={{
-              height: '100%',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              color: isDarkMode ? '#666' : '#999',
-              fontSize: '18px',
-              fontFamily: 'Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
-            }}>
-              🚧 Coming Soon - Select EURUSD to view trading interface
+            <div style={{ height: '100%', overflow: 'auto', padding: '12px' }}>
+              {fullState?.ledgerHealthSummary ? (
+                <div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
+                    <div style={{ fontWeight: 600 }}>Ledger Health</div>
+                    <div style={{ fontSize: 12, color: isDarkMode ? '#aaa' : '#666' }}>
+                      Updated: {new Date(fullState.ledgerHealthSummary.generatedAt).toLocaleTimeString()}
+                    </div>
+                  </div>
+                  <div style={{ borderTop: `1px solid ${isDarkMode ? '#333' : '#eee'}` }} />
+                  <div style={{ marginTop: 8, fontSize: 12, color: isDarkMode ? '#aaa' : '#666' }}>
+                    Green dot = live ticks in last 5s • Valid = 200 bars, ordered, no dups (recent window)
+                  </div>
+                  <div style={{ marginTop: 8 }}>
+                    {fullState.ledgerHealthSummary.instruments.map((row) => (
+                      <div key={row.instrument} style={{
+                        display: 'grid',
+                        gridTemplateColumns: '120px 100px repeat(7, 1fr)',
+                        gap: 8,
+                        alignItems: 'center',
+                        padding: '6px 8px',
+                        borderBottom: `1px solid ${isDarkMode ? '#333' : '#eee'}`
+                      }}>
+                        <div style={{ fontWeight: 600, color: '#2196F3' }}>{row.instrument}</div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                          <span style={{ fontSize: 12, color: isDarkMode ? '#ccc' : '#555' }}>ticks:</span>
+                          <span>{row.ticks.count}</span>
+                          <span title={row.ticks.live ? 'Live' : 'Stale'} style={{
+                            width: 8, height: 8, borderRadius: '50%',
+                            backgroundColor: row.ticks.live ? '#4CAF50' : '#f44336', display: 'inline-block'
+                          }} />
+                        </div>
+                        {['TEN_SECS','ONE_MIN','FIVE_MINS','FIFTEEN_MINS','ONE_HOUR','FOUR_HOURS','DAILY'].map((p) => {
+                          const pHealth = row.periods[p];
+                          const ready = pHealth && pHealth.count >= 200;
+                          const valid = pHealth?.valid;
+                          return (
+                            <div key={p} style={{ fontSize: 12 }}>
+                              <div style={{ color: isDarkMode ? '#aaa' : '#666' }}>{p.replace('_',' ').toLowerCase()}</div>
+                              <div>
+                                <span style={{ fontWeight: 600 }}>{pHealth?.count || 0}</span>
+                                <span style={{ marginLeft: 6, color: valid ? '#4CAF50' : ready ? '#FF9800' : '#f44336' }}>
+                                  {valid ? '✓' : ready ? '•' : '×'}
+                                </span>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ) : (
+                <div style={{
+                  height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  color: isDarkMode ? '#666' : '#999', fontSize: 16
+                }}>
+                  Waiting for ledger summary...
+                </div>
+              )}
             </div>
           ) : (
-            <div style={{
-              height: '100%',
-              display: 'flex',
-              flexDirection: 'column',
-              alignItems: 'center',
-              justifyContent: 'center',
-              color: isDarkMode ? '#666' : '#999',
-              fontSize: '18px',
-              fontFamily: 'Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
-            }}>
-              <div style={{ fontSize: '48px', marginBottom: '20px' }}>🏗️</div>
-              <div style={{ textAlign: 'center' }}>
-                <div style={{ fontSize: '24px', marginBottom: '10px' }}>Under Construction</div>
-                <div>The {selectedInstrument} trading interface is coming soon!</div>
-                <div style={{ marginTop: '10px', fontSize: '16px' }}>Please select EURUSD for now.</div>
-              </div>
-            </div>
+            <PriceChart isDarkMode={isDarkMode} instrument={selectedInstrument} />
           )}
         </div>
 
-        {/* Footer with additional info */}
-        <footer style={{
-          marginTop: '20px',
-          padding: '20px',
-          backgroundColor: isDarkMode ? '#1e1e1e' : '#f5f5f5',
-          borderRadius: '8px',
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          fontFamily: 'Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
-          boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
-          border: `1px solid ${isDarkMode ? '#333' : '#ddd'}`
-        }}>
-          <div style={{ color: '#4CAF50', fontSize: '14px', fontWeight: '500' }}>
-            🟢 Connected to backend | 📡 WebSocket active | 📊 Real-time data streaming
-          </div>
-          <div style={{
-            color: isDarkMode ? '#ccc' : '#666',
-            fontSize: '13px',
-            fontWeight: '400',
-            backgroundColor: isDarkMode ? '#2a2a2a' : '#e0e0e0',
-            padding: '6px 12px',
-            borderRadius: '4px',
-            border: `1px solid ${isDarkMode ? '#444' : '#ccc'}`
-          }}>
-            Last updated: {new Date().toLocaleTimeString()}
-          </div>
-        </footer>
+
       </main>
     </div>
   );

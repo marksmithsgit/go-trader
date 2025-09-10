@@ -2,7 +2,9 @@ package websocket
 
 import (
 	"log"
+	"net"
 	"net/http"
+	"strings"
 	"sync"
 
 	"github.com/gorilla/websocket"
@@ -82,9 +84,27 @@ func (h *Hub) SendCommand(command []byte) {
 var upgrader = websocket.Upgrader{
 	ReadBufferSize:  1024,
 	WriteBufferSize: 1024,
-	// Allow all origins for development purposes.
-	// In production, this should be restricted.
-	CheckOrigin: func(r *http.Request) bool { return true },
+	// Allow localhost and 10.10.10.0/24 network
+	CheckOrigin: func(r *http.Request) bool {
+		origin := r.Header.Get("Origin")
+		if origin == "" {
+			return true // Allow requests without Origin header
+		}
+		
+		// Allow localhost (development)
+		if origin == "http://localhost:5173" || origin == "https://localhost:5173" {
+			return true
+		}
+		
+		// Allow 10.10.10.0/24 network
+		if host, _, err := net.SplitHostPort(r.Host); err == nil {
+			if strings.HasPrefix(host, "10.10.10.") {
+				return true
+			}
+		}
+		
+		return false
+	},
 }
 
 // ServeWs handles WebSocket requests from the peer.
